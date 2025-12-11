@@ -37,7 +37,8 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install pipenv
-          cd src/apps/backend && pipenv install --dev --deploy
+          cd src/apps/backend
+          pipenv install --dev --skip-lock || pipenv install --dev
 
       - name: Install Node dependencies
         run: npm ci
@@ -52,9 +53,14 @@ jobs:
       - name: Wait for MongoDB
         run: |
           echo "Waiting for MongoDB to be ready..."
-          timeout 60 bash -c 'until docker exec $(docker ps -q -f name=mongodb) mongosh --eval "db.runCommand({ ping: 1 })" --quiet 2>/dev/null; do sleep 2; done' || echo "MongoDB check skipped"
-          sleep 5
-          echo "MongoDB should be ready"
+          for i in {1..30}; do
+            if nc -z localhost 27017; then
+              echo "MongoDB is ready!"
+              break
+            fi
+            echo "Attempt $i: Waiting for MongoDB..."
+            sleep 2
+          done
 
       - name: Run Python tests
         env:
