@@ -27,23 +27,37 @@ const TasksPage: React.FC = () => {
       navigate(routes.LOGIN);
       return false;
     }
+    if (!accessToken.accountId) {
+      toast.error('Invalid session. Please login again');
+      navigate(routes.LOGIN);
+      return false;
+    }
     return true;
   }, [accessToken, navigate]);
 
   const loadTasks = useCallback(async () => {
-    if (!ensureAuthenticated()) {
+    if (!ensureAuthenticated() || !accessToken?.accountId) {
       return;
     }
     setIsLoading(true);
     try {
-      const response = await taskService.getTasks(accessToken!);
+      const response = await taskService.getTasks(accessToken);
       setTasks(response.data?.items ?? []);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Unable to load tasks');
+      const errorMessage = err?.response?.data?.message || err?.message || 'Unable to load tasks';
+      if (err?.response?.status === 404) {
+        toast.error('No tasks found for your account');
+        setTasks([]);
+      } else if (err?.response?.status === 401) {
+        toast.error('Session expired. Please login again');
+        navigate(routes.LOGIN);
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, ensureAuthenticated]);
+  }, [accessToken, ensureAuthenticated, navigate]);
 
   useEffect(() => {
     void loadTasks();
@@ -60,23 +74,32 @@ const TasksPage: React.FC = () => {
       toast.error('Title and description are required');
       return;
     }
-    if (!ensureAuthenticated()) {
+    if (!ensureAuthenticated() || !accessToken?.accountId) {
       return;
     }
 
     setIsSaving(true);
     try {
       if (editingTaskId) {
-        await taskService.updateTask(accessToken!, editingTaskId, formValues);
+        await taskService.updateTask(accessToken, editingTaskId, formValues);
         toast.success('Task updated successfully');
       } else {
-        await taskService.createTask(accessToken!, formValues);
+        await taskService.createTask(accessToken, formValues);
         toast.success('Task created successfully');
       }
       resetForm();
       await loadTasks();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Unable to save task');
+      const errorMessage = err?.response?.data?.message || err?.message || 'Unable to save task';
+      if (err?.response?.status === 401) {
+        toast.error('Session expired. Please login again');
+        navigate(routes.LOGIN);
+      } else if (err?.response?.status === 404) {
+        toast.error('Task not found. It may have been deleted.');
+        await loadTasks();
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -90,18 +113,27 @@ const TasksPage: React.FC = () => {
   };
 
   const handleDelete = async (taskId: string) => {
-    if (!ensureAuthenticated()) {
+    if (!ensureAuthenticated() || !accessToken?.accountId) {
       return;
     }
     const confirmed = window.confirm('Are you sure you want to delete this task?');
     if (!confirmed) return;
 
     try {
-      await taskService.deleteTask(accessToken!, taskId);
+      await taskService.deleteTask(accessToken, taskId);
       toast.success('Task deleted successfully');
       await loadTasks();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Unable to delete task');
+      const errorMessage = err?.response?.data?.message || err?.message || 'Unable to delete task';
+      if (err?.response?.status === 401) {
+        toast.error('Session expired. Please login again');
+        navigate(routes.LOGIN);
+      } else if (err?.response?.status === 404) {
+        toast.error('Task not found. It may have already been deleted.');
+        await loadTasks();
+      } else {
+        toast.error(errorMessage);
+      }
     }
   };
 

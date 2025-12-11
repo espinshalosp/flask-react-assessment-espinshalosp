@@ -9,6 +9,9 @@ export default class TaskService extends APIService {
     page?: number,
     size?: number,
   ): Promise<ApiResponse<PaginatedTasks>> => {
+    if (!userAccessToken?.accountId) {
+      throw new Error('Invalid access token: accountId is missing');
+    }
     const response = await this.apiClient.get<JsonObject>(
       `/accounts/${userAccessToken.accountId}/tasks`,
       {
@@ -34,6 +37,9 @@ export default class TaskService extends APIService {
     userAccessToken: AccessToken,
     task: TaskInput,
   ): Promise<ApiResponse<Task>> => {
+    if (!userAccessToken?.accountId) {
+      throw new Error('Invalid access token: accountId is missing');
+    }
     const response = await this.apiClient.post<JsonObject>(
       `/accounts/${userAccessToken.accountId}/tasks`,
       task,
@@ -51,6 +57,9 @@ export default class TaskService extends APIService {
     taskId: string,
     task: TaskInput,
   ): Promise<ApiResponse<Task>> => {
+    if (!userAccessToken?.accountId) {
+      throw new Error('Invalid access token: accountId is missing');
+    }
     const response = await this.apiClient.patch<JsonObject>(
       `/accounts/${userAccessToken.accountId}/tasks/${taskId}`,
       task,
@@ -67,6 +76,9 @@ export default class TaskService extends APIService {
     userAccessToken: AccessToken,
     taskId: string,
   ): Promise<ApiResponse<void>> => {
+    if (!userAccessToken?.accountId) {
+      throw new Error('Invalid access token: accountId is missing');
+    }
     await this.apiClient.delete(`/accounts/${userAccessToken.accountId}/tasks/${taskId}`, {
       headers: { Authorization: `Bearer ${userAccessToken.token}` },
     });
