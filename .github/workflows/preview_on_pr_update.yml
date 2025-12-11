@@ -1,0 +1,70 @@
+name: preview_on_pr_update
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  preview:
+    if: github.event.pull_request.state == 'open'
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+
+      - name: Install Python dependencies
+        run: |
+          pip install pipenv
+          cd src/apps/backend && pipenv install --dev --deploy
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run Python linting
+        run: make run-lint
+        working-directory: src/apps/backend
+
+      - name: Run TypeScript linting
+        run: npm run lint:ts
+
+      - name: Run Python tests
+        env:
+          MONGO_URL: mongodb://localhost:27017/test_db
+          APP_ENV: testing
+        run: |
+          PYTHONPATH=src/apps/backend pipenv run pytest --disable-warnings -v tests/modules/comment/ tests/modules/task/
+        working-directory: .
+
+      - name: Build frontend
+        run: npm run build:frontend
+
+      - name: Check build output
+        run: |
+          if [ ! -f "dist/public/index.bundle.js" ]; then
+            echo "Build failed - index.bundle.js not found"
+            exit 1
+          fi
+          echo "Build successful"
+
