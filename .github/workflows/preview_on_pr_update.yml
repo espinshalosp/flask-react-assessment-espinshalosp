@@ -62,9 +62,8 @@ jobs:
           MONGO_URL: mongodb://localhost:27017/test_db
           APP_ENV: testing
         run: |
-          PYTHONPATH=src/apps/backend pipenv run pytest --disable-warnings -v tests/modules/comment/ tests/modules/task/ || true
+          PYTHONPATH=src/apps/backend pipenv run pytest --disable-warnings -v tests/modules/comment/ tests/modules/task/
         working-directory: .
-        continue-on-error: true
 
       - name: Build frontend
         run: npm run build:frontend
