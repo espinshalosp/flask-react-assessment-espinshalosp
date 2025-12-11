@@ -7,8 +7,8 @@ on:
 
 jobs:
   preview:
-    # only run when updating an 'Open' PR
-    if: github.event.pull_request.state == 'open'
+    # only run when updating an 'Open' PR and required secrets are available
+    if: github.event.pull_request.state == 'open' && vars.HOSTING_PROVIDER != ''
     uses: jalantechnologies/github-ci/.github/workflows/ci.yml@v3.2.3
     concurrency:
       group: ci-preview-${{ github.event.pull_request.head.ref }}
